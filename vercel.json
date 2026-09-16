@@ -1,1 +1,8 @@
-{"functions":{"api/mcp.ts":{"maxDuration":30}}}
+{
+  "buildCommand": null,
+  "functions": {
+    "api/mcp.ts": {
+      "maxDuration": 30
+    }
+  }
+}
