@@ -12,6 +12,40 @@ server.registerTool('send_weekly_insight', { description: '하냥냥 주간 분�
   return { content: [{ type: 'text', text: 'Discord에 주간 인사이트를 전송했습니다.' }] };
 });
 
+server.registerTool('get_recent_feedback', {
+  description: '지정한 기간의 피드백을 Supabase 읽기 전용 함수로 조회합니다.',
+  inputSchema: {
+    start_date: z.string().min(1).describe('조회 시작 시각(ISO 8601)'),
+    end_date: z.string().min(1).describe('조회 종료 시각(ISO 8601)'),
+    limit: z.number().int().min(1).max(200).default(100),
+  },
+}, async ({ start_date, end_date, limit }) => {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('SUPABASE_URL과 SUPABASE_ANON_KEY 환경변수가 설정되지 않았습니다.');
+  }
+
+  const result = await fetch(`${supabaseUrl}/rest/v1/rpc/get_recent_feedback`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${supabaseAnonKey}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ start_date, end_date, result_limit: limit }),
+  });
+
+  if (!result.ok) {
+    throw new Error(`Supabase 피드백 조회 실패 (${result.status}): ${(await result.text()).slice(0, 300)}`);
+  }
+
+  const feedback = await result.json();
+  return {
+    content: [{ type: 'text', text: JSON.stringify(feedback) }],
+  };
+});
+
 function isAuthorized(request: VercelRequest): boolean {
   const expected = process.env.MCP_AUTH_TOKEN;
   return Boolean(expected && request.headers.authorization === `Bearer ${expected}`);
