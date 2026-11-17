@@ -2,9 +2,33 @@
 
 Codex의 주간 PostHog 분석 결과를 Discord Webhook으로 전송하는 원격 MCP 서버입니다.
 
+## MCP 도구
+
+| 도구 | 기능 |
+| --- | --- |
+| `get_recent_feedback` | 지정한 기간의 Supabase 피드백 조회 |
+| `send_weekly_insight` | 기존 주간 분석 전송 |
+| `send_notice_candidate` | 공지 후보의 제목·요약·추천 이유·원문 링크를 Discord로 전송 |
+
+`send_notice_candidate`는 공지 전용 `DISCORD_NOTICE_WEBHOOK_URL` 채널을 사용합니다. 기존 주간 인사이트용 `DISCORD_WEBHOOK_URL`과 별도로 설정해야 합니다. 공지용 URL이 없으면 전송을 중단하며 기존 URL로 대체하지 않습니다. Vercel 프로젝트의 환경변수에 공지용 URL을 저장한 뒤 재배포하세요. `audience`와 `deadline`은 원문에서 확인한 경우에만 입력합니다. 중요도 판단과 중복 확인은 호출하는 작업에서 수행하며, 이 도구는 전송만 담당합니다.
+
+```json
+{
+  "title": "교내 프로그램 신청 안내",
+  "summary": "원문에서 확인한 신청 조건과 내용을 요약합니다.",
+  "reason": "학생들이 신청할 수 있는 프로그램이며 접수 기간이 남아 있습니다.",
+  "source_url": "https://www.instagram.com/p/EXAMPLE/"
+}
+```
+
+전송은 Discord의 메시지 생성 응답을 확인한 뒤 성공을 반환합니다. 응답을 받지 못한 경우에는 실제 채널을 확인하기 전에 재전송하지 마세요. 멘션 알림은 기본으로 비활성화합니다. 이 기능은 하냥냥 서비스에 공지를 자동 게시하지 않습니다.
+
+변경 사항을 Vercel에 배포한 뒤 MCP 클라이언트에서 도구 목록을 다시 불러오거나 재연결해야 새 도구가 표시됩니다. 테스트는 Node.js 22.18 이상에서 `npm test`로 실행할 수 있으며, 외부 Discord 요청은 모의 처리합니다.
+
 ## 환경변수
 
-- `DISCORD_WEBHOOK_URL`: Discord 채널의 웹훅 URL
+- `DISCORD_WEBHOOK_URL`: 기존 주간 인사이트 채널의 웹훅 URL
+- `DISCORD_NOTICE_WEBHOOK_URL`: 공지 후보 전용 채널의 웹훅 URL
 - `MCP_AUTH_TOKEN`: 원격 MCP 호출을 보호할 긴 토큰
 - `SUPABASE_URL`: Supabase 프로젝트 URL
 - `SUPABASE_ANON_KEY`: Supabase anon key. `service_role` 키는 사용하지 않습니다.
