@@ -2,8 +2,27 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
+import { sendNoticeCandidate } from '../src/discord-notice.js';
 
 const server = new McpServer({ name: 'hanyangnyang-discord', version: '0.1.0' });
+server.registerTool('send_notice_candidate', {
+  description: '하냥냥 공지 후보를 공지 전용 Discord 웹훅 채널에 전송합니다. 중요도 판단과 중복 확인을 마친 뒤 호출하세요. 하냥냥에 자동 게시하지 않습니다.',
+  inputSchema: {
+    title: z.string().trim().min(1).max(256),
+    summary: z.string().trim().min(1).max(2000).describe('원문에서 확인한 핵심 내용'),
+    reason: z.string().trim().min(1).max(1000).describe('에리카 학생에게 공지할 가치가 있는 이유'),
+    source_url: z.string().url().max(2048).refine(
+      value => /^https?:\/\//i.test(value),
+      '원문 링크는 HTTP 또는 HTTPS URL이어야 합니다.',
+    ),
+    audience: z.string().trim().min(1).max(200).optional().describe('원문에서 확인한 대상. 불명확하면 생략'),
+    deadline: z.string().trim().min(1).max(100).optional().describe('원문에서 확인한 일정·마감. 불명확하면 생략'),
+  },
+}, async (notice) => {
+  const message = await sendNoticeCandidate(notice);
+  return { content: [{ type: 'text', text: JSON.stringify({ status: 'sent', ...message }) }] };
+});
+
 server.registerTool('send_weekly_insight', { description: '하냥냥 주간 분석을 Discord 웹훅 채널에 보냅니다.', inputSchema: { period: z.string().min(1), title: z.string().min(1).max(256), summary: z.string().min(1).max(4000) } }, async ({ period, title, summary }) => {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) throw new Error('DISCORD_WEBHOOK_URL 환경변수가 설정되지 않았습니다.');
